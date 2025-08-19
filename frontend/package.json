@@ -1,0 +1,36 @@
+{
+  "name": "collex-frontend",
+  "version": "1.0.0",
+  "description": "Digital Campus Wallet Frontend",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1",
+    "axios": "^1.3.4",
+    "zustand": "^4.3.6",
+    "react-icons": "^4.8.0",
+    "react-qr-scanner": "^1.0.0-alpha.11",
+    "framer-motion": "^10.0.1",
+    "socket.io-client": "^4.7.5",
+    "react-hook-form": "^7.43.5",
+    "react-hot-toast": "^2.4.0",
+    "qr-scanner": "^1.4.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.1.0",
+    "eslint": "^8.35.0",
+    "prettier": "^2.8.4",
+    "tailwindcss": "^3.2.7",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.21"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/ --ext .js,.jsx",
+    "format": "prettier --write src/"
+  }
+}
