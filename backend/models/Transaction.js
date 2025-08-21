@@ -4,71 +4,62 @@ const transactionSchema = new mongoose.Schema({
   transactionId: {
     type: String,
     required: true,
-    unique: true,
-    uppercase: true
+    unique: true
   },
-  fromUser: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
-  toMerchant: {
+  walletId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Merchant',
-    index: true
-  },
-  toUser: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    index: true
+    ref: 'Wallet',
+    required: true
   },
   amount: {
     type: Number,
-    required: [true, 'Transaction amount is required'],
-    min: [0.01, 'Amount must be greater than 0'],
-    validate: {
-      validator: function(v) {
-        return Number.isFinite(v) && v > 0;
-      },
-      message: 'Amount must be a positive number'
-    }
+    required: true,
+    min: 0.01
+  },
+  currency: {
+    type: String,
+    default: 'USD',
+    uppercase: true
   },
   type: {
     type: String,
-    enum: {
-      values: ['topup', 'payment', 'refund', 'cashback', 'transfer', 'withdrawal'],
-      message: 'Invalid transaction type'
-    },
-    required: true,
-    index: true
+    enum: ['CREDIT', 'DEBIT'],
+    required: true
   },
   category: {
     type: String,
-    enum: {
-      values: ['canteen', 'event', 'club', 'shop', 'stationery', 'transport', 'library', 'other'],
-      message: 'Invalid transaction category'
-    },
-    default: 'other',
-    index: true
-  },
-  description: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Description cannot exceed 500 characters']
+    enum: ['TRANSFER', 'TOP_UP', 'WITHDRAWAL', 'PAYMENT', 'REFUND', 'REVERSAL'],
+    required: true
   },
   status: {
     type: String,
-    enum: {
-      values: ['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'],
-      message: 'Invalid transaction status'
-    },
-    default: 'pending',
-    index: true
+    enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'],
+    default: 'PENDING'
   },
-  
-  // Payment gateway details
-   squarePaymentId: {
+  paymentMethod: {
+    type: String,
+    enum: ['SQUARE', 'BANK_TRANSFER', 'CREDIT_CARD', 'DEBIT_CARD', 'WALLET', 'CASH'],
+    default: 'SQUARE'
+  },
+  balanceBefore: {
+    type: Number,
+    required: true
+  },
+  balanceAfter: {
+    type: Number,
+    required: true
+  },
+  description: {
+    type: String,
+    maxlength: 500
+  },
+  // Square-specific fields
+  squarePaymentId: {
     type: String,
     sparse: true
   },
@@ -76,297 +67,120 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     sparse: true
   },
-  
-  // Transaction metadata
+  squareOrderId: {
+    type: String,
+    sparse: true
+  },
   metadata: {
-    qrCode: String,
-    eventId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Event'
+    squarePayment: {
+      paymentId: String,
+      status: String,
+      receiptUrl: String,
+      createdAt: String,
+      updatedAt: String
     },
-    clubId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Club'
+    squareLocationId: String,
+    processingFee: {
+      type: Number,
+      default: 0
     },
-    location: {
-      latitude: Number,
-      longitude: Number,
-      address: String
+    transferTo: {
+      userId: mongoose.Schema.Types.ObjectId,
+      walletId: mongoose.Schema.Types.ObjectId,
+      name: String
     },
+    transferFrom: {
+      userId: mongoose.Schema.Types.ObjectId,
+      walletId: mongoose.Schema.Types.ObjectId,
+      name: String
+    },
+    squareErrors: [{
+      category: String,
+      code: String,
+      detail: String,
+      field: String
+    }],
+    ip: String,
+    userAgent: String,
     deviceInfo: {
-      userAgent: String,
-      ip: String,
-      platform: String
-    },
-    merchantInfo: {
-      terminalId: String,
-      cashierId: String
+      platform: String,
+      browser: String
     }
   },
-  
-  // Financial details
   fees: {
-    platformFee: {
+    amount: {
       type: Number,
-      default: 0,
-      min: 0
+      default: 0
     },
-    merchantFee: {
-      type: Number,
-      default: 0,
-      min: 0
+    type: {
+      type: String,
+      enum: ['FLAT', 'PERCENTAGE'],
+      default: 'FLAT'
     },
-    totalFees: {
-      type: Number,
-      default: 0,
-      min: 0
-    }
+    description: String
   },
-  
-  // Balance tracking
-  balanceBeforeTransaction: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  balanceAfterTransaction: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  
-  // Timing information
-  initiatedAt: {
-    type: Date,
-    default: Date.now
-  },
+  processedAt: Date,
   completedAt: Date,
   failedAt: Date,
-  
-  // Error handling
   errorCode: String,
   errorMessage: String,
-  
-  // Settlement information
-  settlementStatus: {
-    type: String,
-    enum: ['pending', 'settled', 'failed'],
-    default: 'pending'
-  },
-  settlementDate: Date,
-  settlementReference: String,
-  
-  // Reference fields
-  parentTransactionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Transaction'
-  },
-  relatedTransactions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Transaction'
-  }],
-  
-  // Audit fields
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  updatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }
+  failureReason: String
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Indexes for performance optimization
-transactionSchema.index({ fromUser: 1, createdAt: -1 });
-transactionSchema.index({ toMerchant: 1, createdAt: -1 });
-transactionSchema.index({ type: 1, status: 1 });
-transactionSchema.index({ category: 1, createdAt: -1 });
+// Indexes for performance
 transactionSchema.index({ transactionId: 1 });
-transactionSchema.index({ razorpayOrderId: 1 }, { sparse: true });
+transactionSchema.index({ userId: 1, createdAt: -1 });
+transactionSchema.index({ walletId: 1, createdAt: -1 });
+transactionSchema.index({ status: 1 });
+transactionSchema.index({ category: 1 });
+transactionSchema.index({ type: 1 });
+transactionSchema.index({ squarePaymentId: 1 }, { sparse: true });
 transactionSchema.index({ createdAt: -1 });
 
-// Compound indexes
-transactionSchema.index({ fromUser: 1, type: 1, status: 1 });
-transactionSchema.index({ toMerchant: 1, status: 1, createdAt: -1 });
-
-// Virtual for amount in rupees
-transactionSchema.virtual('amountInRupees').get(function() {
-  const conversionRate = parseFloat(process.env.COLLEX_CONVERSION_RATE) || 1;
-  return (this.amount / conversionRate).toFixed(2);
+// Virtual for net amount
+walletSchema.virtual('netAmount').get(function() {
+  return this.amount + (this.fees?.amount || 0);
 });
 
-// Virtual for processing time
-transactionSchema.virtual('processingTime').get(function() {
-  if (this.completedAt && this.initiatedAt) {
-    return this.completedAt.getTime() - this.initiatedAt.getTime(); // in milliseconds
-  }
-  return null;
-});
-
-// Virtual for formatted transaction ID
-transactionSchema.virtual('formattedTransactionId').get(function() {
-  return this.transactionId.replace(/(.{3})/g, '$1-').slice(0, -1);
-});
-
-// Pre-save middleware to calculate total fees
-transactionSchema.pre('save', function(next) {
-  if (this.fees) {
-    this.fees.totalFees = (this.fees.platformFee || 0) + (this.fees.merchantFee || 0);
-  }
-  next();
-});
-
-// Pre-save middleware to set completion time
+// Pre-save middleware
 transactionSchema.pre('save', function(next) {
   if (this.isModified('status')) {
-    if (this.status === 'completed' && !this.completedAt) {
+    if (this.status === 'COMPLETED' && !this.completedAt) {
       this.completedAt = new Date();
-    } else if (this.status === 'failed' && !this.failedAt) {
+      this.processedAt = new Date();
+    } else if (this.status === 'FAILED' && !this.failedAt) {
       this.failedAt = new Date();
     }
   }
   next();
 });
 
-// Instance method to mark as completed
-transactionSchema.methods.markAsCompleted = function() {
-  this.status = 'completed';
-  this.completedAt = new Date();
-  return this.save();
+// Static methods
+transactionSchema.statics.getWalletTransactions = function(walletId, options = {}) {
+  const query = { walletId };
+  
+  if (options.status) query.status = options.status;
+  if (options.type) query.type = options.type;
+  if (options.category) query.category = options.category;
+  
+  return this.find(query)
+    .populate('userId', 'name email')
+    .populate('walletId', 'walletId')
+    .sort({ createdAt: -1 });
 };
 
-// Instance method to mark as failed
-transactionSchema.methods.markAsFailed = function(errorCode, errorMessage) {
-  this.status = 'failed';
-  this.failedAt = new Date();
-  this.errorCode = errorCode;
-  this.errorMessage = errorMessage;
-  return this.save();
-};
-
-// Instance method to add related transaction
-transactionSchema.methods.addRelatedTransaction = function(transactionId) {
-  if (!this.relatedTransactions.includes(transactionId)) {
-    this.relatedTransactions.push(transactionId);
-  }
-  return this.save();
-};
-
-// Static method to get transaction statistics
-transactionSchema.statics.getStatistics = async function(dateRange = {}) {
-  const matchCondition = { status: 'completed' };
+transactionSchema.statics.getUserTransactions = function(userId, options = {}) {
+  const query = { userId };
   
-  if (dateRange.start && dateRange.end) {
-    matchCondition.createdAt = {
-      $gte: new Date(dateRange.start),
-      $lte: new Date(dateRange.end)
-    };
-  }
+  if (options.status) query.status = options.status;
+  if (options.type) query.type = options.type;
+  if (options.category) query.category = options.category;
   
-  const stats = await this.aggregate([
-    { $match: matchCondition },
-    {
-      $group: {
-        _id: {
-          type: '$type',
-          category: '$category'
-        },
-        totalAmount: { $sum: '$amount' },
-        count: { $sum: 1 },
-        averageAmount: { $avg: '$amount' }
-      }
-    },
-    {
-      $group: {
-        _id: '$_id.type',
-        categories: {
-          $push: {
-            category: '$_id.category',
-            totalAmount: '$totalAmount',
-            count: '$count',
-            averageAmount: '$averageAmount'
-          }
-        },
-        typeTotalAmount: { $sum: '$totalAmount' },
-        typeTotalCount: { $sum: '$count' }
-      }
-    }
-  ]);
-  
-  return stats;
-};
-
-// Static method to get daily transaction volume
-transactionSchema.statics.getDailyVolume = async function(days = 30) {
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  
-  return await this.aggregate([
-    {
-      $match: {
-        createdAt: { $gte: startDate },
-        status: 'completed'
-      }
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-          day: { $dayOfMonth: '$createdAt' }
-        },
-        totalAmount: { $sum: '$amount' },
-        totalTransactions: { $sum: 1 }
-      }
-    },
-    {
-      $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 }
-    }
-  ]);
-};
-
-// Static method to find suspicious transactions
-transactionSchema.statics.findSuspiciousTransactions = async function() {
-  const suspiciousAmount = 10000; // Amount above which transactions are flagged
-  const rapidTransactionThreshold = 5; // Number of transactions in short time
-  const timeWindow = 10 * 60 * 1000; // 10 minutes in milliseconds
-  
-  return await this.aggregate([
-    {
-      $match: {
-        $or: [
-          { amount: { $gte: suspiciousAmount } },
-          {
-            createdAt: {
-              $gte: new Date(Date.now() - timeWindow)
-            }
-          }
-        ],
-        status: 'completed'
-      }
-    },
-    {
-      $group: {
-        _id: '$fromUser',
-        transactions: { $push: '$$ROOT' },
-        count: { $sum: 1 },
-        totalAmount: { $sum: '$amount' }
-      }
-    },
-    {
-      $match: {
-        $or: [
-          { count: { $gte: rapidTransactionThreshold } },
-          { totalAmount: { $gte: suspiciousAmount * 2 } }
-        ]
-      }
-    }
-  ]);
+  return this.find(query)
+    .populate('walletId', 'walletId')
+    .sort({ createdAt: -1 });
 };
 
 module.exports = mongoose.model('Transaction', transactionSchema);

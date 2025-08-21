@@ -14,6 +14,7 @@ const ordersApi = squareClient.ordersApi;
 const customersApi = squareClient.customersApi;
 const locationsApi = squareClient.locationsApi;
 const refundsApi = squareClient.refundsApi;
+const cardsApi = squareClient.cardsApi;
 
 module.exports = {
   squareClient,
@@ -22,6 +23,7 @@ module.exports = {
   customersApi,
   locationsApi,
   refundsApi,
+  cardsApi,
   applicationId: process.env.SQUARE_APPLICATION_ID,
   locationId: process.env.SQUARE_LOCATION_ID
 };
