@@ -68,15 +68,11 @@ const transactionSchema = new mongoose.Schema({
   },
   
   // Payment gateway details
-  razorpayOrderId: {
+   squarePaymentId: {
     type: String,
     sparse: true
   },
-  razorpayPaymentId: {
-    type: String,
-    sparse: true
-  },
-  razorpaySignature: {
+  squareRefundId: {
     type: String,
     sparse: true
   },

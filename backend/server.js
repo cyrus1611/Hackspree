@@ -1,588 +1,350 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const helmet = require('helmet');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+const crypto = require('crypto');
+const { Client, Environment } = require('squareup');
+const EncryptionManager = require('./utils/encryption');
 require('dotenv').config();
 
-// Import utilities
-const { logger, requestLogger, errorLogger } = require('./utils/logger');
-const { router: apiRoutes, API_VERSION, API_INFO } = require('./routes/index');
-
-// Initialize Express app
 const app = express();
-const server = createServer(app);
+const encryption = new EncryptionManager();
 
-// Initialize Socket.io
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
-  },
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
-});
-
-// Trust proxy (for deployment behind reverse proxy)
-app.set('trust proxy', 1);
-
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"]
-    }
-  },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+// Middleware
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? 
+    'https://yourdomain.com' : 
+    ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true
 }));
 
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://localhost:3001', // For development
-      'https://collex.edu', // Production domain
-      /\.collex\.edu$/, // Subdomains
-    ];
-    
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return origin === allowed;
-      }
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return false;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      logger.logSecurity('cors_blocked', { origin, ip: 'unknown' });
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
-  maxAge: 86400 // 24 hours
-};
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static('public'));
 
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
-// Body parser middleware with size limits
-app.use(express.json({ 
-  limit: '10mb',
-  verify: (req, res, buf, encoding) => {
-    // Store raw body for webhook verification
-    if (req.originalUrl?.includes('/webhooks/')) {
-      req.rawBody = buf;
-    }
-  }
-}));
-
-app.use(express.urlencoded({ 
-  extended: true, 
-  limit: '10mb' 
-}));
-
-// Serve static files (for uploads, QR codes, etc.)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '1d',
-  etag: true
-}));
-
-// Request logging middleware
-app.use(requestLogger);
-
-// Add API version and server info to all responses
+// Security headers
 app.use((req, res, next) => {
-  res.setHeader('API-Version', API_VERSION);
-  res.setHeader('X-Powered-By', 'Collex-API/1.0.0');
-  res.setHeader('X-Server-Time', new Date().toISOString());
-  
-  // Add security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  
   next();
 });
 
-// Database connection with retry logic
-const connectWithRetry = async () => {
-  const maxRetries = 5;
-  let retries = 0;
-  
-  while (retries < maxRetries) {
-    try {
-      await mongoose.connect(process.env.MONGODB_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-        bufferCommands: false,
-        bufferMaxEntries: 0
-      });
+// Initialize Square client
+const { PaymentsApi, CustomersApi, LocationsApi } = new Client({
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  environment: process.env.SQUARE_ENVIRONMENT === 'production' 
+    ? Environment.Production 
+    : Environment.Sandbox,
+});
 
-      logger.info('✅ MongoDB Connected', {
-        host: mongoose.connection.host,
-        database: mongoose.connection.name,
-        state: mongoose.connection.readyState,
-        retry: retries
-      });
-      break;
-
-    } catch (error) {
-      retries++;
-      logger.error(`❌ MongoDB connection attempt ${retries} failed`, {
-        error: error.message,
-        retries,
-        maxRetries
-      });
-
-      if (retries >= maxRetries) {
-        logger.error('💥 Maximum MongoDB connection retries exceeded');
-        process.exit(1);
-      }
-
-      // Wait before retrying (exponential backoff)
-      const delay = Math.pow(2, retries) * 1000;
-      logger.info(`⏳ Retrying MongoDB connection in ${delay}ms`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
+// Generate keys endpoint (development only)
+app.get('/generate-keys', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Not available in production' });
   }
-};
 
-// Initialize database connection
-connectWithRetry();
-
-// Database connection event handlers
-mongoose.connection.on('error', (err) => {
-  logger.error('MongoDB connection error', { error: err.message });
+  res.json({
+    masterKey: EncryptionManager.generateMasterKey(),
+    cardKey: EncryptionManager.generateCardKey(),
+    webhookSecret: crypto.randomBytes(32).toString('hex')
+  });
 });
 
-mongoose.connection.on('disconnected', () => {
-  logger.warn('MongoDB disconnected. Attempting to reconnect...');
-  connectWithRetry();
-});
+// Secure payment processing endpoint
+app.post('/process-payment', async (req, res) => {
+  try {
+    const { 
+      sourceId, 
+      amount, 
+      currency = 'USD', 
+      customerId, 
+      note,
+      billingAddress,
+      customerData 
+    } = req.body;
 
-mongoose.connection.on('reconnected', () => {
-  logger.info('✅ MongoDB reconnected');
-});
-
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  logger.debug('Socket connection established', { 
-    socketId: socket.id,
-    ip: socket.handshake.address 
-  });
-
-  // User authentication for socket
-  socket.on('authenticate', async (data) => {
-    try {
-      const jwt = require('jsonwebtoken');
-      const User = require('./models/User');
-      
-      if (data.token) {
-        const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('-password');
-        
-        if (user && user.isActive) {
-          socket.userId = user._id.toString();
-          socket.userRole = user.role;
-          socket.join(`user_${socket.userId}`);
-          
-          logger.debug('Socket authenticated', { 
-            userId: socket.userId,
-            role: socket.userRole,
-            socketId: socket.id
-          });
-          
-          socket.emit('authenticated', { 
-            status: 'success',
-            userId: socket.userId,
-            role: socket.userRole
-          });
-        } else {
-          socket.emit('authentication_error', { 
-            error: 'User not found or inactive' 
-          });
-        }
-      }
-    } catch (error) {
-      logger.warn('Socket authentication failed', { 
-        error: error.message,
-        socketId: socket.id 
-      });
-      socket.emit('authentication_error', { error: 'Invalid token' });
-    }
-  });
-
-  // Join wallet room for real-time balance updates
-  socket.on('join_wallet', (userId) => {
-    if (socket.userId && socket.userId === userId) {
-      socket.join(`wallet_${userId}`);
-      logger.debug('User joined wallet room', { userId, socketId: socket.id });
-    }
-  });
-
-  // Leave wallet room
-  socket.on('leave_wallet', (userId) => {
-    if (socket.userId && socket.userId === userId) {
-      socket.leave(`wallet_${userId}`);
-      logger.debug('User left wallet room', { userId, socketId: socket.id });
-    }
-  });
-
-  // Join merchant room for payment notifications
-  socket.on('join_merchant', (merchantId) => {
-    if (socket.userId) {
-      socket.join(`merchant_${merchantId}`);
-      logger.debug('User joined merchant room', { 
-        userId: socket.userId, 
-        merchantId, 
-        socketId: socket.id 
+    // Input validation
+    if (!sourceId || !amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment parameters'
       });
     }
-  });
 
-  // Handle disconnect
-  socket.on('disconnect', (reason) => {
-    logger.debug('Socket disconnected', { 
-      socketId: socket.id,
-      userId: socket.userId,
-      reason 
-    });
-  });
-
-  // Handle connection errors
-  socket.on('error', (error) => {
-    logger.error('Socket error', { 
-      error: error.message,
-      socketId: socket.id,
-      userId: socket.userId
-    });
-  });
-});
-
-// Make io accessible in routes
-app.set('io', io);
-
-// Root redirect to API docs
-app.get('/', (req, res) => {
-  res.redirect('/api');
-});
-
-// Health check endpoint (before API routes for faster response)
-app.get('/health', (req, res) => {
-  const health = {
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: API_INFO.version,
-    environment: process.env.NODE_ENV || 'development'
-  };
-  res.json(health);
-});
-
-// Mount API routes
-app.use('/api', apiRoutes);
-
-// Serve API documentation as HTML (optional)
-app.get('/docs', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Collex API Documentation</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #1D4ED8; margin-bottom: 10px; }
-            .subtitle { color: #6B7280; margin-bottom: 30px; }
-            .button { display: inline-block; background: #1D4ED8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; margin-bottom: 10px; }
-            .button:hover { background: #1E40AF; }
-            .info { background: #EEF2FF; padding: 20px; border-radius: 6px; margin: 20px 0; }
-            .status { padding: 10px 15px; background: #10B981; color: white; border-radius: 4px; display: inline-block; margin: 10px 0; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Collex API Documentation</h1>
-            <p class="subtitle">Digital Campus Wallet API v${API_INFO.version}</p>
-            
-            <div class="status">🚀 API Status: Active</div>
-            
-            <div class="info">
-                <h3>Quick Links</h3>
-                <a href="/api" class="button">API Overview</a>
-                <a href="/api/docs" class="button">JSON Documentation</a>
-                <a href="/api/health" class="button">Health Check</a>
-                <a href="/api/status" class="button">System Status</a>
-            </div>
-            
-            <h3>Getting Started</h3>
-            <p>The Collex API provides endpoints for wallet management, payments, merchant operations, and event registration.</p>
-            
-            <h4>Authentication</h4>
-            <p>Most endpoints require JWT authentication. Include the token in the Authorization header:</p>
-            <pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;">Authorization: Bearer YOUR_JWT_TOKEN</pre>
-            
-            <h4>Base URL</h4>
-            <pre style="background: #f8f9fa; padding: 15px; border-radius: 4px;">${req.protocol}://${req.get('host')}/api</pre>
-            
-            <h4>Support</h4>
-            <p>For support, contact: <strong>${API_INFO.supportEmail}</strong></p>
-        </div>
-    </body>
-    </html>
-  `);
-});
-
-// Error logging middleware
-app.use(errorLogger);
-
-// Global error handling middleware
-app.use((err, req, res, next) => {
-  // Log error with context
-  logger.error('Unhandled application error', {
-    error: {
-      name: err.name,
-      message: err.message,
-      stack: err.stack
-    },
-    request: {
-      method: req.method,
-      url: req.originalUrl,
-      headers: req.headers,
-      body: req.method !== 'GET' ? req.body : undefined,
-      params: req.params,
-      query: req.query,
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      userId: req.userId,
-      requestId: req.requestId
+    // Encrypt sensitive customer data if provided
+    let encryptedCustomerData = null;
+    if (customerData) {
+      encryptedCustomerData = encryption.encryptData(customerData, true);
     }
-  });
 
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
-    const validationErrors = Object.values(err.errors || {}).map(e => ({
-      field: e.path,
-      message: e.message,
-      value: e.value
-    }));
+    // Convert amount to cents
+    const amountInCents = Math.round(parseFloat(amount) * 100);
+
+    const paymentRequest = {
+      sourceId,
+      idempotencyKey: crypto.randomUUID(),
+      amountMoney: {
+        amount: BigInt(amountInCents),
+        currency: currency
+      },
+      locationId: process.env.SQUARE_LOCATION_ID,
+      acceptPartialAuthorization: false,
+      autocomplete: true
+    };
+
+    // Add optional fields securely
+    if (customerId) {
+      paymentRequest.customerId = customerId;
+    }
     
-    return res.status(400).json({
-      error: 'Validation Error',
-      message: 'Request validation failed',
-      details: validationErrors,
-      requestId: req.requestId
-    });
-  }
-
-  if (err.name === 'CastError') {
-    return res.status(400).json({
-      error: 'Invalid ID',
-      message: 'The provided ID is not valid',
-      requestId: req.requestId
-    });
-  }
-
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue || {})[0];
-    return res.status(409).json({
-      error: 'Duplicate Entry',
-      message: `A record with this ${field} already exists`,
-      field,
-      requestId: req.requestId
-    });
-  }
-
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      error: 'Invalid Token',
-      message: 'The provided authentication token is invalid',
-      requestId: req.requestId
-    });
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      error: 'Token Expired',
-      message: 'The authentication token has expired',
-      requestId: req.requestId
-    });
-  }
-
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({
-      error: 'Payload Too Large',
-      message: 'Request body exceeds maximum allowed size',
-      requestId: req.requestId
-    });
-  }
-
-  // CORS errors
-  if (err.message && err.message.includes('CORS')) {
-    return res.status(403).json({
-      error: 'CORS Error',
-      message: 'Cross-origin request blocked',
-      requestId: req.requestId
-    });
-  }
-
-  // Default error response
-  const statusCode = err.statusCode || err.status || 500;
-  const errorResponse = {
-    error: err.name || 'Internal Server Error',
-    message: statusCode === 500 ? 'An unexpected error occurred' : err.message,
-    requestId: req.requestId,
-    timestamp: new Date().toISOString()
-  };
-
-  // Include stack trace in development
-  if (process.env.NODE_ENV === 'development') {
-    errorResponse.stack = err.stack;
-    errorResponse.details = err;
-  }
-
-  res.status(statusCode).json(errorResponse);
-});
-
-// 404 handler for non-API routes
-app.use('*', (req, res) => {
-  logger.warn('Route not found', {
-    method: req.method,
-    path: req.originalUrl,
-    ip: req.ip,
-    userAgent: req.get('User-Agent')
-  });
-
-  res.status(404).json({
-    error: 'Not Found',
-    message: `The requested resource ${req.method} ${req.originalUrl} was not found`,
-    suggestion: 'Check the API documentation at /api/docs',
-    requestId: req.requestId,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Server configuration
-const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || '0.0.0.0';
-
-// Start server
-server.listen(PORT, HOST, () => {
-  logger.info('🚀 Collex Backend Server Started', {
-    port: PORT,
-    host: HOST,
-    environment: process.env.NODE_ENV || 'development',
-    nodeVersion: process.version,
-    apiVersion: API_VERSION,
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-    features: [
-      'JWT Authentication',
-      'Wallet Management',
-      'QR Payments',
-      'Real-time Notifications',
-      'Admin Dashboard',
-      'Event Management'
-    ]
-  });
-
-  console.log('\n🎉 Collex Server Ready!');
-  console.log(`📊 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`📚 Documentation: http://localhost:${PORT}/docs`);
-  console.log(`💚 Health Check: http://localhost:${PORT}/health`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-});
-
-// Graceful shutdown handling
-const gracefulShutdown = (signal) => {
-  logger.info(`${signal} received. Starting graceful shutdown...`);
-
-  server.close((err) => {
-    if (err) {
-      logger.error('Error during server close', { error: err.message });
-      process.exit(1);
+    if (note) {
+      paymentRequest.note = note.substring(0, 500); // Limit note length
     }
 
-    logger.info('HTTP server closed');
+    if (billingAddress) {
+      paymentRequest.billingAddress = {
+        addressLine1: billingAddress.addressLine1,
+        addressLine2: billingAddress.addressLine2,
+        locality: billingAddress.city,
+        administrativeDistrictLevel1: billingAddress.state,
+        postalCode: billingAddress.postalCode,
+        country: billingAddress.country || 'US'
+      };
+    }
 
-    // Close database connection
-    mongoose.connection.close(() => {
-      logger.info('MongoDB connection closed');
+    // Process payment with Square
+    const { result } = await PaymentsApi.createPayment(paymentRequest);
 
-      // Close socket.io
-      io.close(() => {
-        logger.info('Socket.io closed');
-        logger.info('✅ Graceful shutdown completed');
-        process.exit(0);
+    // Encrypt payment result for logging
+    const encryptedPaymentLog = encryption.encryptData({
+      paymentId: result.payment.id,
+      amount: amountInCents,
+      timestamp: new Date().toISOString(),
+      status: result.payment.status
+    });
+
+    // Log encrypted payment data (implement your logging system)
+    console.log('Payment processed:', encryptedPaymentLog);
+
+    // Return success response (never expose sensitive data)
+    res.json({
+      success: true,
+      paymentId: result.payment.id,
+      status: result.payment.status,
+      receiptNumber: result.payment.receiptNumber,
+      createdAt: result.payment.createdAt
+    });
+
+  } catch (error) {
+    console.error('Payment processing error:', error);
+
+    // Handle Square-specific errors
+    if (error.result && error.result.errors) {
+      const squareErrors = error.result.errors.map(err => ({
+        category: err.category,
+        code: err.code,
+        detail: err.detail
+      }));
+
+      return res.status(400).json({
+        success: false,
+        errors: squareErrors
       });
-    });
-  });
-
-  // Force shutdown after 30 seconds
-  setTimeout(() => {
-    logger.error('Force shutdown - timeout exceeded');
-    process.exit(1);
-  }, 30000);
-};
-
-// Handle process termination signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught Exception', { 
-    error: {
-      name: err.name,
-      message: err.message,
-      stack: err.stack
     }
-  });
-  
-  // Graceful shutdown on uncaught exception
-  gracefulShutdown('UNCAUGHT_EXCEPTION');
+
+    res.status(500).json({
+      success: false,
+      error: 'Payment processing failed'
+    });
+  }
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Promise Rejection', {
-    reason: reason?.toString() || reason,
-    promise: promise?.toString() || 'Unknown promise'
-  });
-  
-  // Graceful shutdown on unhandled rejection
-  gracefulShutdown('UNHANDLED_REJECTION');
+// Secure customer creation endpoint
+app.post('/create-customer', async (req, res) => {
+  try {
+    const { 
+      givenName, 
+      familyName, 
+      emailAddress, 
+      phoneNumber,
+      address 
+    } = req.body;
+
+    // Input sanitization and validation
+    const sanitizedData = {
+      givenName: givenName?.trim().substring(0, 300),
+      familyName: familyName?.trim().substring(0, 300),
+      emailAddress: emailAddress?.trim().toLowerCase(),
+      phoneNumber: phoneNumber?.replace(/[^\d+\-\s]/g, '')
+    };
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (sanitizedData.emailAddress && !emailRegex.test(sanitizedData.emailAddress)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email address'
+      });
+    }
+
+    const customerRequest = sanitizedData;
+
+    // Add address if provided
+    if (address) {
+      customerRequest.address = {
+        addressLine1: address.addressLine1,
+        addressLine2: address.addressLine2,
+        locality: address.city,
+        administrativeDistrictLevel1: address.state,
+        postalCode: address.postalCode,
+        country: address.country || 'US'
+      };
+    }
+
+    const { result } = await CustomersApi.createCustomer(customerRequest);
+
+    // Encrypt customer data for secure storage
+    const encryptedCustomer = encryption.encryptData({
+      customerId: result.customer.id,
+      email: sanitizedData.emailAddress,
+      createdAt: result.customer.createdAt
+    });
+
+    console.log('Customer created:', encryptedCustomer);
+
+    res.json({
+      success: true,
+      customerId: result.customer.id,
+      createdAt: result.customer.createdAt
+    });
+
+  } catch (error) {
+    console.error('Customer creation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create customer'
+    });
+  }
 });
 
-// Export app and server for testing
-module.exports = { app, server, io };
+// Payment configuration endpoint
+app.get('/payment-config', (req, res) => {
+  res.json({
+    applicationId: process.env.SQUARE_APPLICATION_ID,
+    locationId: process.env.SQUARE_LOCATION_ID,
+    environment: process.env.SQUARE_ENVIRONMENT
+  });
+});
+
+// Secure webhook endpoint with signature verification
+app.post('/webhooks/square', express.raw({ type: 'application/json' }), (req, res) => {
+  try {
+    const signature = req.headers['x-square-hmacsha256-signature'];
+    const body = req.body.toString('utf8');
+    
+    // Verify webhook signature
+    const webhookSecret = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
+    if (!signature || !webhookSecret) {
+      console.error('Missing webhook signature or secret');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Verify HMAC signature
+    const isValidSignature = encryption.verifyHMAC(
+      body, 
+      signature, 
+      webhookSecret
+    );
+
+    if (!isValidSignature) {
+      console.error('Invalid webhook signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    const event = JSON.parse(body);
+    console.log('Webhook event received:', event.type);
+
+    // Handle different event types securely
+    switch (event.type) {
+      case 'payment.created':
+        handlePaymentCreated(event.data.object.payment);
+        break;
+      case 'payment.updated':
+        handlePaymentUpdated(event.data.object.payment);
+        break;
+      case 'payment.failed':
+        handlePaymentFailed(event.data.object.payment);
+        break;
+      default:
+        console.log('Unhandled event type:', event.type);
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Webhook event handlers
+function handlePaymentCreated(payment) {
+  const encryptedLog = encryption.encryptData({
+    event: 'payment.created',
+    paymentId: payment.id,
+    amount: payment.totalMoney.amount,
+    status: payment.status,
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log('Payment created event:', encryptedLog);
+  // Add your business logic here
+}
+
+function handlePaymentUpdated(payment) {
+  const encryptedLog = encryption.encryptData({
+    event: 'payment.updated',
+    paymentId: payment.id,
+    status: payment.status,
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log('Payment updated event:', encryptedLog);
+  // Add your business logic here
+}
+
+function handlePaymentFailed(payment) {
+  const encryptedLog = encryption.encryptData({
+    event: 'payment.failed',
+    paymentId: payment.id,
+    status: payment.status,
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log('Payment failed event:', encryptedLog);
+  // Add your business logic here
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.SQUARE_ENVIRONMENT
+  });
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error'
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Secure Square Payment server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.SQUARE_ENVIRONMENT}`);
+});
+
+module.exports = app;
