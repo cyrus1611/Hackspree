@@ -1,0 +1,542 @@
+{
+  "validUsers": [
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a1",
+      "name": "John Doe",
+      "email": "john.doe@hackspree.com",
+      "phone": "+1234567890",
+      "passwordHash": "$2b$12$LQv3c1yqBwUHdCD4h/yOSOQGDY1r4YUlhVsUoqQJ7QY5N5JRR5y5W",
+      "passwordHistory": [
+        "$2b$12$LQv3c1yqBwUHdCD4h/yOSOQGDY1r4YUlhVsUoqQJ7QY5N5JRR5y5W",
+        "$2b$12$OldPasswordHash1234567890123456789012345678901234567"
+      ],
+      "dateOfBirth": "1990-05-15T00:00:00.000Z",
+      "role": "user",
+      "permissions": ["wallet:read", "wallet:transfer", "event:register"],
+      "isActive": true,
+      "isEmailVerified": true,
+      "isPhoneVerified": true,
+      "address": {
+        "street": "123 Main Street",
+        "city": "New York",
+        "state": "NY",
+        "postalCode": "10001",
+        "country": "US"
+      },
+      "profileImage": "https://example.com/avatars/john-doe.jpg",
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true,
+          "marketing": false
+        },
+        "privacy": {
+          "profileVisibility": "public",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/New_York"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": "2025-08-22T08:00:00.000Z",
+        "lastLoginIP": "192.168.1.100",
+        "lastLoginUserAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+        "registrationIP": "192.168.1.100",
+        "registrationUserAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)"
+      },
+      "mfa": {
+        "totpEnabled": false,
+        "totpSecret": null,
+        "backupCodes": [],
+        "smsEnabled": false
+      },
+      "socialAccounts": {
+        "google": null,
+        "facebook": null,
+        "apple": null
+      },
+      "createdAt": "2025-01-15T10:30:00.000Z",
+      "updatedAt": "2025-08-22T08:00:00.000Z",
+      "lastActiveAt": "2025-08-22T08:00:00.000Z"
+    },
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a2",
+      "name": "Jane Smith",
+      "email": "jane.smith@business.com",
+      "phone": "+1234567891",
+      "passwordHash": "$2b$12$XQv4c2yqBwUHdCD5h/yOSOQGDY2r5YUlhVsUoqQJ8QY6N6JRR6y6W",
+      "passwordHistory": [
+        "$2b$12$XQv4c2yqBwUHdCD5h/yOSOQGDY2r5YUlhVsUoqQJ8QY6N6JRR6y6W"
+      ],
+      "dateOfBirth": "1985-03-22T00:00:00.000Z",
+      "role": "merchant",
+      "permissions": [
+        "wallet:read", "wallet:transfer", "merchant:create", "merchant:manage",
+        "event:create", "event:manage", "analytics:view"
+      ],
+      "isActive": true,
+      "isEmailVerified": true,
+      "isPhoneVerified": true,
+      "address": {
+        "street": "456 Business Ave",
+        "city": "Los Angeles",
+        "state": "CA",
+        "postalCode": "90210",
+        "country": "US"
+      },
+      "profileImage": "https://example.com/avatars/jane-smith.jpg",
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true,
+          "marketing": true
+        },
+        "privacy": {
+          "profileVisibility": "public",
+          "showBalance": true,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/Los_Angeles"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": "2025-08-21T15:30:00.000Z",
+        "lastLoginIP": "192.168.1.101",
+        "lastLoginUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "registrationIP": "192.168.1.101",
+        "registrationUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      "mfa": {
+        "totpEnabled": true,
+        "totpSecret": "JBSWY3DPEHPK3PXP",
+        "backupCodes": ["ABC123", "DEF456", "GHI789"],
+        "smsEnabled": false
+      },
+      "businessInfo": {
+        "businessName": "Jane's Coffee Shop",
+        "businessType": "LLC",
+        "taxId": "12-3456789",
+        "website": "https://janescoffee.com"
+      },
+      "createdAt": "2025-02-01T09:15:00.000Z",
+      "updatedAt": "2025-08-21T15:30:00.000Z",
+      "lastActiveAt": "2025-08-21T15:30:00.000Z"
+    },
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a3",
+      "name": "Mike Admin",
+      "email": "admin@hackspree.com",
+      "phone": "+1234567892",
+      "passwordHash": "$2b$12$YQv5c3yqBwUHdCD6h/yOSOQGDY3r6YUlhVsUoqQJ9QY7N7JRR7y7W",
+      "passwordHistory": [
+        "$2b$12$YQv5c3yqBwUHdCD6h/yOSOQGDY3r6YUlhVsUoqQJ9QY7N7JRR7y7W",
+        "$2b$12$OldAdminHash1234567890123456789012345678901234567",
+        "$2b$12$OlderAdminHash1234567890123456789012345678901234567"
+      ],
+      "dateOfBirth": "1982-11-08T00:00:00.000Z",
+      "role": "admin",
+      "permissions": ["*"],
+      "isActive": true,
+      "isEmailVerified": true,
+      "isPhoneVerified": true,
+      "address": {
+        "street": "789 Admin Blvd",
+        "city": "San Francisco",
+        "state": "CA",
+        "postalCode": "94102",
+        "country": "US"
+      },
+      "profileImage": "https://example.com/avatars/mike-admin.jpg",
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true,
+          "marketing": false
+        },
+        "privacy": {
+          "profileVisibility": "private",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/Los_Angeles"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": "2025-08-22T07:45:00.000Z",
+        "lastLoginIP": "10.0.0.1",
+        "lastLoginUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "registrationIP": "10.0.0.1",
+        "registrationUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+      },
+      "mfa": {
+        "totpEnabled": true,
+        "totpSecret": "KBSWY4DPEHPK4PXP",
+        "backupCodes": ["XYZ789", "UVW456", "RST123"],
+        "smsEnabled": true
+      },
+      "createdAt": "2024-12-01T08:00:00.000Z",
+      "updatedAt": "2025-08-22T07:45:00.000Z",
+      "lastActiveAt": "2025-08-22T07:45:00.000Z"
+    }
+  ],
+  "unverifiedUsers": [
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a4",
+      "name": "Sarah Pending",
+      "email": "sarah.pending@example.com",
+      "phone": "+1234567893",
+      "passwordHash": "$2b$12$ZQv6c4yqBwUHdCD7h/yOSOQGDY4r7YUlhVsUoqQJ0QY8N8JRR8y8W",
+      "passwordHistory": [
+        "$2b$12$ZQv6c4yqBwUHdCD7h/yOSOQGDY4r7YUlhVsUoqQJ0QY8N8JRR8y8W"
+      ],
+      "dateOfBirth": "1995-07-12T00:00:00.000Z",
+      "role": "user",
+      "permissions": ["wallet:read"],
+      "isActive": true,
+      "isEmailVerified": false,
+      "isPhoneVerified": false,
+      "address": {
+        "street": "321 Pending St",
+        "city": "Chicago",
+        "state": "IL",
+        "postalCode": "60601",
+        "country": "US"
+      },
+      "profileImage": null,
+      "emailVerification": {
+        "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz",
+        "expiresAt": "2025-08-23T10:30:00.000Z",
+        "sentAt": "2025-08-22T10:30:00.000Z"
+      },
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true,
+          "marketing": false
+        },
+        "privacy": {
+          "profileVisibility": "public",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/Chicago"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": null,
+        "lastLoginIP": null,
+        "lastLoginUserAgent": null,
+        "registrationIP": "192.168.1.102",
+        "registrationUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      "mfa": {
+        "totpEnabled": false,
+        "totpSecret": null,
+        "backupCodes": [],
+        "smsEnabled": false
+      },
+      "createdAt": "2025-08-22T10:30:00.000Z",
+      "updatedAt": "2025-08-22T10:30:00.000Z",
+      "lastActiveAt": "2025-08-22T10:30:00.000Z"
+    }
+  ],
+  "inactiveUsers": [
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a5",
+      "name": "Bob Inactive",
+      "email": "bob.inactive@example.com",
+      "phone": "+1234567894",
+      "passwordHash": "$2b$12$AQv7c5yqBwUHdCD8h/yOSOQGDY5r8YUlhVsUoqQJ1QY9N9JRR9y9W",
+      "passwordHistory": [
+        "$2b$12$AQv7c5yqBwUHdCD8h/yOSOQGDY5r8YUlhVsUoqQJ1QY9N9JRR9y9W"
+      ],
+      "dateOfBirth": "1988-09-30T00:00:00.000Z",
+      "role": "user",
+      "permissions": [],
+      "isActive": false,
+      "isEmailVerified": true,
+      "isPhoneVerified": false,
+      "address": {
+        "street": "555 Inactive Rd",
+        "city": "Miami",
+        "state": "FL",
+        "postalCode": "33101",
+        "country": "US"
+      },
+      "profileImage": "https://example.com/avatars/bob-inactive.jpg",
+      "deactivatedAt": "2025-07-01T12:00:00.000Z",
+      "deactivationReason": "user_requested",
+      "preferences": {
+        "notifications": {
+          "email": false,
+          "sms": false,
+          "push": false,
+          "marketing": false
+        },
+        "privacy": {
+          "profileVisibility": "private",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/New_York"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": "2025-06-30T18:00:00.000Z",
+        "lastLoginIP": "192.168.1.103",
+        "lastLoginUserAgent": "Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/88.0",
+        "registrationIP": "192.168.1.103",
+        "registrationUserAgent": "Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/88.0"
+      },
+      "mfa": {
+        "totpEnabled": false,
+        "totpSecret": null,
+        "backupCodes": [],
+        "smsEnabled": false
+      },
+      "createdAt": "2025-01-10T14:20:00.000Z",
+      "updatedAt": "2025-07-01T12:00:00.000Z",
+      "lastActiveAt": "2025-06-30T18:00:00.000Z"
+    }
+  ],
+  "lockedUsers": [
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a6",
+      "name": "Carol Locked",
+      "email": "carol.locked@example.com",
+      "phone": "+1234567895",
+      "passwordHash": "$2b$12$BQv8c6yqBwUHdCD9h/yOSOQGDY6r9YUlhVsUoqQJ2QY0N0JRR0y0W",
+      "passwordHistory": [
+        "$2b$12$BQv8c6yqBwUHdCD9h/yOSOQGDY6r9YUlhVsUoqQJ2QY0N0JRR0y0W"
+      ],
+      "dateOfBirth": "1993-12-03T00:00:00.000Z",
+      "role": "user",
+      "permissions": ["wallet:read"],
+      "isActive": true,
+      "isEmailVerified": true,
+      "isPhoneVerified": true,
+      "address": {
+        "street": "777 Locked Ln",
+        "city": "Seattle",
+        "state": "WA",
+        "postalCode": "98101",
+        "country": "US"
+      },
+      "profileImage": "https://example.com/avatars/carol-locked.jpg",
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true,
+          "marketing": false
+        },
+        "privacy": {
+          "profileVisibility": "public",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/Los_Angeles"
+      },
+      "security": {
+        "loginAttempts": 5,
+        "lockedUntil": "2025-08-22T14:30:00.000Z",
+        "lastLogin": "2025-08-21T10:00:00.000Z",
+        "lastLoginIP": "192.168.1.104",
+        "lastLoginUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "lastFailedLogin": "2025-08-22T12:30:00.000Z",
+        "registrationIP": "192.168.1.104",
+        "registrationUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+      },
+      "mfa": {
+        "totpEnabled": false,
+        "totpSecret": null,
+        "backupCodes": [],
+        "smsEnabled": false
+      },
+      "createdAt": "2025-03-15T11:45:00.000Z",
+      "updatedAt": "2025-08-22T12:30:00.000Z",
+      "lastActiveAt": "2025-08-21T10:00:00.000Z"
+    }
+  ],
+  "socialUsers": [
+    {
+      "_id": "64f2a1b3c5d6e7f8g9h0i1a7",
+      "name": "David Google",
+      "email": "david.google@gmail.com",
+      "phone": null,
+      "passwordHash": null,
+      "passwordHistory": [],
+      "dateOfBirth": "1991-04-18T00:00:00.000Z",
+      "role": "user",
+      "permissions": ["wallet:read", "wallet:transfer"],
+      "isActive": true,
+      "isEmailVerified": true,
+      "isPhoneVerified": false,
+      "address": null,
+      "profileImage": "https://lh3.googleusercontent.com/a/example-profile-image",
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true,
+          "marketing": true
+        },
+        "privacy": {
+          "profileVisibility": "public",
+          "showBalance": false,
+          "showTransactionHistory": false
+        },
+        "language": "en",
+        "currency": "USD",
+        "timezone": "America/New_York"
+      },
+      "security": {
+        "loginAttempts": 0,
+        "lockedUntil": null,
+        "lastLogin": "2025-08-22T06:15:00.000Z",
+        "lastLoginIP": "192.168.1.105",
+        "lastLoginUserAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+        "registrationIP": "192.168.1.105",
+        "registrationUserAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)"
+      },
+      "mfa": {
+        "totpEnabled": false,
+        "totpSecret": null,
+        "backupCodes": [],
+        "smsEnabled": false
+      },
+      "socialAccounts": {
+        "google": {
+          "id": "123456789012345678901",
+          "email": "david.google@gmail.com",
+          "name": "David Google",
+          "picture": "https://lh3.googleusercontent.com/a/example-profile-image",
+          "verified": true,
+          "connectedAt": "2025-08-01T09:30:00.000Z"
+        },
+        "facebook": null,
+        "apple": null
+      },
+      "createdAt": "2025-08-01T09:30:00.000Z",
+      "updatedAt": "2025-08-22T06:15:00.000Z",
+      "lastActiveAt": "2025-08-22T06:15:00.000Z"
+    }
+  ],
+  "testHelperData": {
+    "userIds": [
+      "64f2a1b3c5d6e7f8g9h0i1a1",
+      "64f2a1b3c5d6e7f8g9h0i1a2",
+      "64f2a1b3c5d6e7f8g9h0i1a3",
+      "64f2a1b3c5d6e7f8g9h0i1a4",
+      "64f2a1b3c5d6e7f8g9h0i1a5",
+      "64f2a1b3c5d6e7f8g9h0i1a6",
+      "64f2a1b3c5d6e7f8g9h0i1a7"
+    ],
+    "roles": ["user", "merchant", "admin", "moderator"],
+    "permissions": [
+      "wallet:read", "wallet:transfer", "wallet:topup", "wallet:withdraw",
+      "merchant:create", "merchant:manage", "merchant:delete",
+      "event:create", "event:manage", "event:register",
+      "club:create", "club:manage", "club:join",
+      "analytics:view", "admin:users", "admin:system"
+    ],
+    "languages": ["en", "es", "fr", "de", "pt", "it", "ja", "ko", "zh"],
+    "currencies": ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "KRW", "CNY"],
+    "timezones": [
+      "America/New_York", "America/Los_Angeles", "America/Chicago",
+      "Europe/London", "Europe/Paris", "Asia/Tokyo", "Asia/Shanghai"
+    ],
+    "profileVisibilityOptions": ["public", "friends", "private"],
+    "passwordHashes": {
+      "password123": "$2b$12$LQv3c1yqBwUHdCD4h/yOSOQGDY1r4YUlhVsUoqQJ7QY5N5JRR5y5W",
+      "securePass456": "$2b$12$XQv4c2yqBwUHdCD5h/yOSOQGDY2r5YUlhVsUoqQJ8QY6N6JRR6y6W",
+      "adminSecret789": "$2b$12$YQv5c3yqBwUHdCD6h/yOSOQGDY3r6YUlhVsUoqQJ9QY7N7JRR7y7W"
+    },
+    "emailDomains": [
+      "hackspree.com", "business.com", "example.com", "gmail.com", "yahoo.com"
+    ]
+  },
+  "userSummaries": {
+    "totalUsers": 7,
+    "activeUsers": 6,
+    "inactiveUsers": 1,
+    "verifiedUsers": 6,
+    "unverifiedUsers": 1,
+    "lockedUsers": 1,
+    "usersByRole": {
+      "user": 5,
+      "merchant": 1,
+      "admin": 1
+    },
+    "usersWithMFA": 2,
+    "usersWithSocialAccounts": 1,
+    "averageAccountAge": "185 days",
+    "registrationTrends": {
+      "2024-12": 1,
+      "2025-01": 2,
+      "2025-02": 1,
+      "2025-03": 1,
+      "2025-08": 2
+    }
+  },
+  "validationData": {
+    "validEmails": [
+      "test@hackspree.com",
+      "user@example.com",
+      "valid.email+tag@domain.co.uk"
+    ],
+    "invalidEmails": [
+      "invalid-email",
+      "@domain.com",
+      "user@",
+      "user@domain",
+      "user.domain.com"
+    ],
+    "validPhones": [
+      "+1234567890",
+      "+44207123456",
+      "+33123456789",
+      "+49301234567"
+    ],
+    "invalidPhones": [
+      "123456",
+      "abc123def",
+      "+1234",
+      "12345678901234567890"
+    ],
+    "strongPasswords": [
+      "SecureP@ssw0rd123!",
+      "C0mpl3x!P@ssw0rd",
+      "MyStr0ng#Pa$$word2025"
+    ],
+    "weakPasswords": [
+      "password",
+      "123456",
+      "qwerty",
+      "admin",
+      "Password"
+    ]
+  }
+}
